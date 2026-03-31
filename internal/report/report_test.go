@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -70,8 +71,6 @@ func TestGenerateAllReportFormats(t *testing.T) {
 	}{
 		{"json", GenerateJSON, "Acme Corp"},
 		{"html", GenerateHTML, "OSINT-отчет по компании"},
-		{"md", GenerateMarkdown, "# Company OSINT Report"},
-		{"txt", GenerateText, "COMPANY OSINT REPORT"},
 	}
 
 	for _, tt := range formats {
@@ -210,6 +209,88 @@ func TestGenerateHTMLMatchesDigitalFootprintSample(t *testing.T) {
 	}
 }
 
+func TestGenerateHTMLMatchesJSONForSameReportObject(t *testing.T) {
+	report := models.Report{
+		GeneratedAt: time.Unix(1710000000, 0).UTC(),
+		Inputs: models.TargetInput{
+			Company: "ЗАЗЕКС",
+			Domain:  "zuzex.ru",
+		},
+		DigitalFootprint: &models.DigitalFootprintModuleResult{
+			Data: models.DigitalFootprintData{
+				OfficialWebsite: "https://www.zuzex.ru/",
+				Domain:          "zuzex.ru",
+				DomainDiscovery: "provided via CLI input",
+				ProvidersUsed:   []string{"spiderfoot"},
+				IPs: []string{
+					"2a0d:d6c1:0:1a::1b4",
+					"2a0d:d6c1:0:1a::2c9",
+					"84.201.185.208",
+					"84.201.189.229",
+					"89.169.178.50",
+				},
+				Technologies: []string{"Next.js", "Nginx"},
+				ProviderHints: []string{
+					"asn: AS119021",
+					"asn: AS169",
+					"asn: AS200350",
+					"hosting/provider: Yandex Cloud",
+					"nameserver: ns1.yandexcloud.net",
+					"nameserver: ns2.yandexcloud.net",
+					"netblock: 89.169.128.0/18",
+				},
+			},
+		},
+	}
+
+	jsonData, _, err := GenerateJSON(report)
+	if err != nil {
+		t.Fatalf("GenerateJSON returned error: %v", err)
+	}
+	htmlData, _, err := GenerateHTML(report)
+	if err != nil {
+		t.Fatalf("GenerateHTML returned error: %v", err)
+	}
+
+	var compact compactJSONReport
+	if err := json.Unmarshal(jsonData, &compact); err != nil {
+		t.Fatalf("unmarshal compact JSON: %v", err)
+	}
+	if compact.DigitalFootprint == nil {
+		t.Fatal("expected digital_footprint in compact JSON")
+	}
+
+	html := string(htmlData)
+	for _, value := range compact.DigitalFootprint.ProvidersUsed {
+		if !strings.Contains(html, value) {
+			t.Fatalf("expected HTML to contain provider %q, got %s", value, html)
+		}
+	}
+	for _, value := range compact.DigitalFootprint.IPs {
+		if !strings.Contains(html, value) {
+			t.Fatalf("expected HTML to contain IP %q, got %s", value, html)
+		}
+	}
+	for _, value := range compact.DigitalFootprint.Technologies {
+		if !strings.Contains(html, value) {
+			t.Fatalf("expected HTML to contain technology %q, got %s", value, html)
+		}
+	}
+	for _, value := range []string{
+		"ns1.yandexcloud.net",
+		"ns2.yandexcloud.net",
+		"Yandex Cloud",
+		"89.169.128.0/18",
+		"AS119021",
+		"AS169",
+		"AS200350",
+	} {
+		if !strings.Contains(html, value) {
+			t.Fatalf("expected HTML to contain parsed provider hint %q, got %s", value, html)
+		}
+	}
+}
+
 func TestGenerateJSONUsesNullAndEmptyCollections(t *testing.T) {
 	report := models.Report{
 		GeneratedAt: time.Unix(1710000000, 0).UTC(),
@@ -234,7 +315,7 @@ func TestGenerateJSONUsesNullAndEmptyCollections(t *testing.T) {
 	}
 }
 
-func TestGroupedErrorsInOutputs(t *testing.T) {
+func TestGroupedErrorsInJSON(t *testing.T) {
 	report := models.Report{
 		GeneratedAt: time.Unix(1710000000, 0).UTC(),
 		Errors: []models.SourceError{
@@ -243,11 +324,12 @@ func TestGroupedErrorsInOutputs(t *testing.T) {
 		},
 	}
 
-	data, _, err := GenerateText(report)
+	data, _, err := GenerateJSON(report)
 	if err != nil {
-		t.Fatalf("GenerateText returned error: %v", err)
+		t.Fatalf("GenerateJSON returned error: %v", err)
 	}
-	if !strings.Contains(string(data), "http status 404 (x2)") {
-		t.Fatalf("expected grouped error in text report, got %s", string(data))
+	output := string(data)
+	if !strings.Contains(output, `"error": "http status 404"`) || !strings.Contains(output, `"count": 2`) {
+		t.Fatalf("expected grouped error in json report, got %s", output)
 	}
 }

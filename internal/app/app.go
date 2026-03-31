@@ -37,8 +37,6 @@ func (o Options) Validate() error {
 	validFormats := map[string]bool{
 		"json": true,
 		"html": true,
-		"md":   true,
-		"txt":  true,
 	}
 
 	if !validModules[o.Module] {
@@ -93,7 +91,7 @@ func Run(ctx context.Context, opts Options) (string, error) {
 		report.Errors = append(report.Errors, result.Errors...)
 	}
 
-	generator := reportsvc.NewService(logger)
+	generator := reportsvc.NewService()
 	content, ext, err := generator.Generate(report, runCfg.Format)
 	if err != nil {
 		return "", fmt.Errorf("generate report: %w", err)

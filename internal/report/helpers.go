@@ -1,7 +1,6 @@
 package report
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -60,13 +59,6 @@ func aggregateErrors(items []models.SourceError) []aggregatedSourceError {
 		return out[i].SourceName < out[j].SourceName
 	})
 	return out
-}
-
-func formatAggregatedError(item aggregatedSourceError) string {
-	if item.Count > 1 {
-		return fmt.Sprintf("%s (x%d)", item.Error, item.Count)
-	}
-	return item.Error
 }
 
 func stringPtr(value string) *string {
