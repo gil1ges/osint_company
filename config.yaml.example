@@ -1,0 +1,11 @@
+timeout: 15s
+output: ./reports
+user_agent: osintcli/1.0
+verbose: false
+shodan_api_key: ""
+securitytrails_api_key: ""
+spiderfoot_command: ""
+spiderfoot_url: ""
+spiderfoot_results_path: ""
+maltego_command: ""
+maltego_results_path: ""

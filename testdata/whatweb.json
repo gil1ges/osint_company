@@ -1,0 +1,10 @@
+[
+  {
+    "target": "https://example.com",
+    "plugins": {
+      "Cloudflare": {"string": ["Cloudflare"]},
+      "Nginx": {"string": ["nginx"]},
+      "WordPress": {"version": ["6.4"]}
+    }
+  }
+]

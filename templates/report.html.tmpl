@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OSINT-отчет по компании</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-alt: #f9fbff;
+      --ink: #18212b;
+      --muted: #607080;
+      --line: #d9e1ea;
+      --line-strong: #c6d0db;
+      --accent: #2359c4;
+      --accent-soft: #eaf2ff;
+      --ok: #1d6b46;
+      --ok-soft: #edf9f2;
+      --warn: #9a6400;
+      --warn-soft: #fff6db;
+      --err: #b33737;
+      --err-soft: #fff0f0;
+      --shadow: 0 18px 40px rgba(24, 33, 43, 0.06);
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(35, 89, 196, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(29, 107, 70, 0.06), transparent 24%),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-meta {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      min-height: 96px;
+    }
+
+    .summary-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .summary-value {
+      font-size: 18px;
+      line-height: 1.35;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .status-good, .status-warn, .status-err {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-good { background: var(--ok-soft); color: var(--ok); }
+    .status-warn { background: var(--warn-soft); color: var(--warn); }
+    .status-err { background: var(--err-soft); color: var(--err); }
+
+    .section {
+      margin-top: 24px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      padding: 22px 24px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(234, 242, 255, 0.5), rgba(255, 255, 255, 0));
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 25px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .section-body {
+      padding: 22px 24px 24px;
+    }
+
+    .subsection + .subsection {
+      margin-top: 24px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+    }
+
+    .subsection-title {
+      margin: 0 0 14px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px 20px;
+    }
+
+    .detail {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-grid .detail {
+      border-bottom: none;
+      padding: 0;
+    }
+
+    .detail-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .detail-value {
+      font-size: 16px;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 22px;
+    }
+
+    .panel {
+      background: var(--surface-alt);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .list li + li {
+      margin-top: 8px;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .tag-muted {
+      background: #eef2f7;
+      color: var(--muted);
+    }
+
+    .stack > * + * {
+      margin-top: 12px;
+    }
+
+    .compact-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--ink);
+    }
+
+    .compact-list li + li {
+      margin-top: 6px;
+    }
+
+    .wayback-item small,
+    .port-item small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+    }
+
+    .notice {
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+
+    .notice.warn {
+      background: var(--warn-soft);
+      border: 1px solid #efd79b;
+    }
+
+    .notice.err {
+      background: var(--err-soft);
+      border: 1px solid #efc2c2;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .mono {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 14px;
+    }
+
+    a { color: var(--accent); }
+
+    @media (max-width: 860px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        padding: 20px 14px 42px;
+      }
+
+      .hero, .section-head, .section-body {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <p class="eyebrow">Краткая сводка</p>
+      <h1>OSINT-отчет по компании</h1>
+      <p class="hero-meta">Сформирован: {{ fmtTime .GeneratedAt }}</p>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span class="summary-label">Компания</span>
+          <div class="summary-value">{{ orValue .Summary.Company }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Полное юридическое наименование</span>
+          <div class="summary-value">{{ orValue .Summary.FullLegalName }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Домен</span>
+          <div class="summary-value mono">{{ orValue .Summary.Domain }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">ИНН</span>
+          <div class="summary-value mono">{{ orValue .Summary.INN }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">ОГРН</span>
+          <div class="summary-value mono">{{ orValue .Summary.OGRN }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Дата регистрации</span>
+          <div class="summary-value">{{ orValue .Summary.RegistrationDate }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Основной адрес офиса</span>
+          <div class="summary-value">{{ orValue .Summary.MainAddress }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Использованные источники</span>
+          <div class="summary-value">{{ orJoined .Summary.ProvidersUsed }}</div>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Статус отчета</span>
+          <div class="summary-value">
+            <span class="{{ if and (eq .Summary.OverallStatus "Выполнено успешно") }}status-good{{ else if or (eq .Summary.OverallStatus "Выполнено с предупреждениями") (eq .Summary.OverallStatus "Выполнено с предупреждениями и ошибками") }}status-warn{{ else }}status-err{{ end }}">
+              {{ .Summary.OverallStatus }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Профиль компании</h2>
+        <p class="section-subtitle">Ключевые юридические сведения, структура компании, направления деятельности и данные о соответствии требованиям.</p>
+      </div>
+      <div class="section-body">
+        <div class="subsection">
+          <h3 class="subsection-title">Юридическая идентичность</h3>
+          <div class="detail-grid">
+            <div class="detail">
+              <span class="detail-label">Официальный сайт</span>
+              <div class="detail-value">{{ if .Profile }}{{ orValue .Profile.OfficialWebsite }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">Полное юридическое наименование</span>
+              <div class="detail-value">{{ if .Profile }}{{ orValue .Profile.FullLegalName }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">ИНН</span>
+              <div class="detail-value mono">{{ if .Profile }}{{ orValue .Profile.INN }}{{ else }}{{ orValue .Summary.INN }}{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">ОГРН</span>
+              <div class="detail-value mono">{{ if .Profile }}{{ orValue .Profile.OGRN }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">Дата регистрации</span>
+              <div class="detail-value">{{ if .Profile }}{{ orValue .Profile.RegistrationDate }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">Регистрационные данные</span>
+              <div class="detail-value">{{ if .Profile }}{{ orValue .Profile.RegistrationData }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Адреса и структура</h3>
+          <div class="two-col">
+            <div class="panel">
+              <span class="detail-label">Адреса офисов</span>
+              {{ if and .Profile (hasItems .Profile.OfficeAddresses) }}
+              <ul class="list">
+                {{ range .Profile.OfficeAddresses }}
+                <li>{{ . }}</li>
+                {{ end }}
+              </ul>
+              {{ else }}
+              <div class="detail-value muted">Не найдено</div>
+              {{ end }}
+            </div>
+            <div class="stack">
+              <div class="panel">
+                <span class="detail-label">Филиалы</span>
+                {{ if and .Profile (hasItems .Profile.Branches) }}
+                <ul class="compact-list">
+                  {{ range .Profile.Branches }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Не найдено</div>
+                {{ end }}
+              </div>
+              <div class="panel">
+                <span class="detail-label">Дочерние компании</span>
+                {{ if and .Profile (hasItems .Profile.Subsidiaries) }}
+                <ul class="compact-list">
+                  {{ range .Profile.Subsidiaries }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Не найдено</div>
+                {{ end }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Деятельность</h3>
+          <div class="stack">
+            <div class="panel">
+              <span class="detail-label">Услуги</span>
+              {{ if and .Profile (hasItems .Profile.Services) }}
+              <div class="tag-list">
+                {{ range .Profile.Services }}
+                <span class="tag">{{ . }}</span>
+                {{ end }}
+              </div>
+              {{ else }}
+              <div class="detail-value muted">Не найдено</div>
+              {{ end }}
+            </div>
+            <div class="panel">
+              <span class="detail-label">Отрасли</span>
+              {{ if and .Profile (hasItems .Profile.Industries) }}
+              <div class="tag-list">
+                {{ range .Profile.Industries }}
+                <span class="tag">{{ . }}</span>
+                {{ end }}
+              </div>
+              {{ else }}
+              <div class="detail-value muted">Не найдено</div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Соответствие требованиям</h3>
+          <div class="two-col">
+            <div class="panel">
+              <span class="detail-label">Лицензии</span>
+              {{ if and .Profile (hasItems .Profile.Licenses) }}
+              <ul class="compact-list">
+                {{ range .Profile.Licenses }}
+                <li>{{ . }}</li>
+                {{ end }}
+              </ul>
+              {{ else }}
+              <div class="detail-value muted">Не найдено</div>
+              {{ end }}
+            </div>
+            <div class="panel">
+              <span class="detail-label">Сертификаты</span>
+              {{ if and .Profile (hasItems .Profile.Certificates) }}
+              <ul class="compact-list">
+                {{ range .Profile.Certificates }}
+                <li>{{ . }}</li>
+                {{ end }}
+              </ul>
+              {{ else }}
+              <div class="detail-value muted">Не найдено</div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Проверенные источники</h3>
+          <div class="two-col">
+            <div class="panel">
+              <span class="detail-label">Просканированные страницы</span>
+              {{ if and .Profile (hasItems .Profile.PagesScanned) }}
+              <ul class="compact-list">
+                {{ range .Profile.PagesScanned }}
+                <li><a href="{{ . }}">{{ . }}</a></li>
+                {{ end }}
+              </ul>
+              {{ else }}
+              <div class="detail-value muted">Не найдено</div>
+              {{ end }}
+            </div>
+            <div class="panel">
+              <span class="detail-label">Просканированные документы</span>
+              {{ if and .Profile .Profile.DocumentsScanned }}
+              <ul class="compact-list">
+                {{ range .Profile.DocumentsScanned }}
+                <li><a href="{{ .URL }}">{{ if .Label }}{{ .Label }}{{ else }}{{ .URL }}{{ end }}</a>{{ if .Type }} <span class="muted">({{ .Type }})</span>{{ end }}</li>
+                {{ end }}
+              </ul>
+              {{ else }}
+              <div class="detail-value muted">Документы не найдены</div>
+              {{ end }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Цифровой след</h2>
+        <p class="section-subtitle">Пассивные инфраструктурные, технологические и архивные сигналы с приоритетом данных SpiderFoot.</p>
+      </div>
+      <div class="section-body">
+        <div class="subsection">
+          <h3 class="subsection-title">Домен и сайт</h3>
+          <div class="detail-grid">
+            <div class="detail">
+              <span class="detail-label">Официальный сайт</span>
+              <div class="detail-value">{{ if .DigitalFootprint }}{{ orValue .DigitalFootprint.OfficialWebsite }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">Домен</span>
+              <div class="detail-value mono">{{ if .DigitalFootprint }}{{ orValue .DigitalFootprint.Domain }}{{ else }}{{ orValue .Summary.Domain }}{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">Источник домена</span>
+              <div class="detail-value">{{ if .DigitalFootprint }}{{ orValue .DigitalFootprint.DomainDiscovery }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+            <div class="detail">
+              <span class="detail-label">Использованные источники</span>
+              <div class="detail-value">{{ if .DigitalFootprint }}{{ orJoined .DigitalFootprint.ProvidersUsed }}{{ else }}Не найдено{{ end }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Инфраструктура</h3>
+          <div class="two-col">
+            <div class="panel">
+              <span class="detail-label">IP-адреса</span>
+              {{ if and .DigitalFootprint (hasItems .DigitalFootprint.IPs) }}
+              <ul class="compact-list mono">
+                {{ range .DigitalFootprint.IPs }}
+                <li>{{ . }}</li>
+                {{ end }}
+              </ul>
+              {{ else }}
+              <div class="detail-value muted">Нет данных</div>
+              {{ end }}
+            </div>
+            <div class="stack">
+              <div class="panel">
+                <span class="detail-label">Серверы имен</span>
+                {{ if and .DigitalFootprint (hasItems .DigitalFootprint.Nameservers) }}
+                <ul class="compact-list mono">
+                  {{ range .DigitalFootprint.Nameservers }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Нет данных</div>
+                {{ end }}
+              </div>
+              <div class="panel">
+                <span class="detail-label">Хостинг / провайдер</span>
+                {{ if and .DigitalFootprint (hasItems .DigitalFootprint.HostingProviders) }}
+                <ul class="compact-list">
+                  {{ range .DigitalFootprint.HostingProviders }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Нет данных</div>
+                {{ end }}
+              </div>
+              <div class="panel">
+                <span class="detail-label">Сетевой блок / ASN / CDN</span>
+                <div class="stack">
+                  <div>
+                    <span class="detail-label">Сетевой блок</span>
+                    {{ if and .DigitalFootprint (hasItems .DigitalFootprint.Netblocks) }}
+                    <ul class="compact-list mono">
+                      {{ range .DigitalFootprint.Netblocks }}
+                      <li>{{ . }}</li>
+                      {{ end }}
+                    </ul>
+                    {{ else }}
+                    <div class="detail-value muted">Нет данных</div>
+                    {{ end }}
+                  </div>
+                  <div>
+                    <span class="detail-label">ASN</span>
+                    {{ if and .DigitalFootprint (hasItems .DigitalFootprint.ASNs) }}
+                    <ul class="compact-list mono">
+                      {{ range .DigitalFootprint.ASNs }}
+                      <li>{{ . }}</li>
+                      {{ end }}
+                    </ul>
+                    {{ else }}
+                    <div class="detail-value muted">Нет данных</div>
+                    {{ end }}
+                  </div>
+                  <div>
+                    <span class="detail-label">CDN</span>
+                    <div class="detail-value">{{ if .DigitalFootprint }}{{ orValue .DigitalFootprint.CDN }}{{ else }}Не найдено{{ end }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Технологии</h3>
+          {{ if and .DigitalFootprint (hasItems .DigitalFootprint.Technologies) }}
+          <div class="tag-list">
+            {{ range .DigitalFootprint.Technologies }}
+            <span class="tag">{{ . }}</span>
+            {{ end }}
+          </div>
+          {{ else }}
+          <div class="detail-value muted">Не найдено</div>
+          {{ end }}
+        </div>
+
+        <div class="subsection">
+          <h3 class="subsection-title">Пассивная разведка</h3>
+          <div class="two-col">
+            <div class="stack">
+              <div class="panel">
+                <span class="detail-label">Поддомены</span>
+                {{ if and .DigitalFootprint (hasItems .DigitalFootprint.Subdomains) }}
+                <ul class="compact-list mono">
+                  {{ range .DigitalFootprint.Subdomains }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Нет пассивных данных</div>
+                {{ end }}
+              </div>
+              <div class="panel">
+                <span class="detail-label">Дополнительные инфраструктурные признаки</span>
+                {{ if and .DigitalFootprint (hasItems .DigitalFootprint.AdditionalHints) }}
+                <ul class="compact-list">
+                  {{ range .DigitalFootprint.AdditionalHints }}
+                  <li>{{ . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Дополнительные пассивные признаки не найдены</div>
+                {{ end }}
+              </div>
+            </div>
+            <div class="stack">
+              <div class="panel">
+                <span class="detail-label">Снимки Wayback</span>
+                {{ if and .DigitalFootprint .DigitalFootprint.Wayback }}
+                <ul class="compact-list">
+                  {{ range .DigitalFootprint.Wayback }}
+                  <li class="wayback-item">
+                    <a href="{{ .ArchiveURL }}">{{ .Timestamp }}</a>
+                    <small>{{ .OriginalURL }}</small>
+                  </li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Нет пассивных данных</div>
+                {{ end }}
+              </div>
+              <div class="panel">
+                <span class="detail-label">Пассивно обнаруженные порты</span>
+                {{ if and .DigitalFootprint (hasItems .DigitalFootprint.Ports) }}
+                <ul class="compact-list mono">
+                  {{ range .DigitalFootprint.Ports }}
+                  <li class="port-item">{{ portLabel . }}</li>
+                  {{ end }}
+                </ul>
+                {{ else }}
+                <div class="detail-value muted">Нет пассивных данных</div>
+                {{ end }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Провайдеры и источники данных</h2>
+        <p class="section-subtitle">Откуда были получены данные и какой источник был основным для сбора цифрового следа.</p>
+      </div>
+      <div class="section-body">
+        <div class="detail-grid">
+          <div class="detail">
+            <span class="detail-label">Использованные источники</span>
+            <div class="detail-value">{{ orJoined .Providers.ProvidersUsed }}</div>
+          </div>
+          <div class="detail">
+            <span class="detail-label">Основной источник для цифрового следа</span>
+            <div class="detail-value">{{ orValue .Providers.PrimaryProvider }}</div>
+          </div>
+          <div class="detail">
+            <span class="detail-label">Статус SpiderFoot</span>
+            <div class="detail-value">{{ orValue .Providers.SpiderFootState }}</div>
+          </div>
+          <div class="detail">
+            <span class="detail-label">Ключевые источники профиля</span>
+            <div class="detail-value">{{ orJoined .Providers.ProfileSources }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {{ if .Warnings }}
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Предупреждения</h2>
+        <p class="section-subtitle">Предупреждения сгруппированы и показаны компактно, чтобы не перегружать отчет.</p>
+      </div>
+      <div class="section-body">
+        <div class="notice warn">
+          <ul class="compact-list">
+            {{ range .Warnings }}
+            <li>{{ . }}</li>
+            {{ end }}
+          </ul>
+        </div>
+      </div>
+    </section>
+    {{ end }}
+
+    {{ if .Errors }}
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Ошибки</h2>
+        <p class="section-subtitle">Сгруппированные операционные ошибки от провайдеров и fallback-источников.</p>
+      </div>
+      <div class="section-body">
+        <div class="notice err">
+          <table>
+            <thead>
+              <tr>
+                <th>Источник</th>
+                <th>Операция</th>
+                <th>Ошибка</th>
+                <th>Количество</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ range .Errors }}
+              <tr>
+                <td>{{ .SourceName }}</td>
+                <td>{{ orValue .Operation }}</td>
+                <td>{{ .Error }}</td>
+                <td>{{ .Count }}</td>
+              </tr>
+              {{ end }}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    {{ end }}
+  </div>
+</body>
+</html>
