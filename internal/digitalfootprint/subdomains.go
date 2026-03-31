@@ -57,18 +57,6 @@ func collectSubdomains(ctx context.Context, client *util.HTTPClient, cfg config.
 			CollectedAt: nowUTC(),
 		})
 	}
-	if lines, attempted, err := providers.RunMaltegoAuto(ctx, cfg.MaltegoCommand, domain, ""); err == nil {
-		set = append(set, normalizeProviderLinesToHosts(domain, lines)...)
-	} else if attempted {
-		errors = append(errors, models.SourceError{
-			SourceName:  "maltego",
-			SourceType:  "tool",
-			Operation:   "run",
-			Error:       err.Error(),
-			Temporary:   true,
-			CollectedAt: nowUTC(),
-		})
-	}
 
 	for _, link := range homepageLinks {
 		if host := util.ExtractDomainFromURL(link); host != "" && host != domain {

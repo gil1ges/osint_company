@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"net"
 	"net/url"
@@ -36,24 +35,6 @@ type EnrichmentResult struct {
 	ProviderHints []string
 	Technologies  []string
 	Evidence      []models.Evidence
-}
-
-type graphML struct {
-	XMLName xml.Name       `xml:"graphml"`
-	Graphs  []graphMLGraph `xml:"graph"`
-}
-
-type graphMLGraph struct {
-	Nodes []graphMLNode `xml:"node"`
-}
-
-type graphMLNode struct {
-	Data []graphMLData `xml:"data"`
-}
-
-type graphMLData struct {
-	Key   string `xml:"key,attr"`
-	Value string `xml:",chardata"`
 }
 
 type spiderFootScan struct {
@@ -127,30 +108,6 @@ func CollectSpiderFootEnrichment(ctx context.Context, client *util.HTTPClient, c
 	return result
 }
 
-func CollectMaltegoEnrichment(ctx context.Context, configuredCommand, configuredPath, domain, company string) EnrichmentResult {
-	result := EnrichmentResult{Provider: "maltego"}
-
-	if lines, used, err := RunMaltegoAuto(ctx, configuredCommand, domain, company); err == nil && used {
-		result.merge(classifyProviderLines("maltego", "", lines, domain))
-		result.Used = true
-	} else if used && err != nil {
-		result.Errors = append(result.Errors, WrapError("maltego", "tool", "run", "", err))
-	}
-
-	if enrichment, ok, err := loadProviderPath("maltego", configuredPath, maltegoDefaultPaths(), domain); err == nil && ok {
-		result.merge(enrichment)
-		result.Used = result.Used || enrichment.Used
-	} else if err != nil {
-		result.Errors = append(result.Errors, WrapError("maltego", "file", "load_results", configuredPath, err))
-	}
-
-	if !result.Used && len(result.Errors) == 0 {
-		result.Warnings = append(result.Warnings, "maltego: no local CLI or export results found")
-	}
-	result.normalize(domain)
-	return result
-}
-
 func (r *EnrichmentResult) merge(other EnrichmentResult) {
 	r.Subdomains = append(r.Subdomains, other.Subdomains...)
 	r.IPs = append(r.IPs, other.IPs...)
@@ -203,19 +160,6 @@ func spiderFootURLCandidates(configuredURL string) []string {
 		out = append(out, candidate)
 	}
 	return out
-}
-
-func maltegoDefaultPaths() []string {
-	return []string{
-		"./maltego-results",
-		"./maltego-results.json",
-		"./exports/maltego",
-		"./exports/maltego.json",
-		"./testdata/maltego",
-		"./testdata/maltego.json",
-		"./testdata/maltego.csv",
-		"./testdata/maltego.graphml",
-	}
 }
 
 func loadProviderURL(ctx context.Context, client *util.HTTPClient, provider, sourceURL, domain string) (EnrichmentResult, error) {
@@ -337,7 +281,7 @@ func loadProviderPath(provider, configured string, defaults []string, domain str
 }
 
 func loadProviderDirectory(provider, dir, domain string) (EnrichmentResult, bool, error) {
-	patterns := []string{"*.json", "*.csv", "*.txt", "*.graphml"}
+	patterns := []string{"*.json", "*.csv", "*.txt"}
 	files := make([]string, 0)
 	for _, pattern := range patterns {
 		matches, err := filepath.Glob(filepath.Join(dir, pattern))
@@ -369,8 +313,6 @@ func parseProviderContent(provider, source string, body []byte, domain string) (
 	switch strings.ToLower(filepath.Ext(source)) {
 	case ".csv":
 		return parseProviderCSV(provider, source, body, domain)
-	case ".graphml":
-		return parseProviderGraphML(provider, source, body, domain)
 	case ".txt", ".log":
 		lines := strings.Split(string(body), "\n")
 		return classifyProviderLines(provider, source, lines, domain), nil
@@ -861,25 +803,6 @@ func parseProviderCSV(provider, source string, body []byte, domain string) (Enri
 		}
 		if len(lineParts) > 0 {
 			lines = append(lines, strings.Join(lineParts, " | "))
-		}
-	}
-	return classifyProviderLines(provider, source, lines, domain), nil
-}
-
-func parseProviderGraphML(provider, source string, body []byte, domain string) (EnrichmentResult, error) {
-	var payload graphML
-	if err := xml.Unmarshal(body, &payload); err != nil {
-		return EnrichmentResult{}, err
-	}
-	lines := make([]string, 0)
-	for _, graph := range payload.Graphs {
-		for _, node := range graph.Nodes {
-			for _, data := range node.Data {
-				text := strings.TrimSpace(data.Value)
-				if text != "" {
-					lines = append(lines, text)
-				}
-			}
 		}
 	}
 	return classifyProviderLines(provider, source, lines, domain), nil

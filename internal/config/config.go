@@ -19,8 +19,6 @@ type Config struct {
 	SpiderFootCommand     string
 	SpiderFootURL         string
 	SpiderFootResultsPath string
-	MaltegoCommand        string
-	MaltegoResultsPath    string
 }
 
 func Default() Config {
@@ -101,10 +99,6 @@ func setConfigValue(cfg *Config, key, value string) error {
 		cfg.SpiderFootURL = value
 	case "spiderfoot_results_path":
 		cfg.SpiderFootResultsPath = value
-	case "maltego_command":
-		cfg.MaltegoCommand = value
-	case "maltego_results_path":
-		cfg.MaltegoResultsPath = value
 	default:
 		return nil
 	}
@@ -137,12 +131,6 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("OSINTCLI_SPIDERFOOT_RESULTS_PATH"); strings.TrimSpace(v) != "" {
 		cfg.SpiderFootResultsPath = v
-	}
-	if v := os.Getenv("OSINTCLI_MALTEGO_COMMAND"); strings.TrimSpace(v) != "" {
-		cfg.MaltegoCommand = v
-	}
-	if v := os.Getenv("OSINTCLI_MALTEGO_RESULTS_PATH"); strings.TrimSpace(v) != "" {
-		cfg.MaltegoResultsPath = v
 	}
 	if v := os.Getenv("OSINTCLI_VERBOSE"); strings.TrimSpace(v) != "" {
 		if b, err := strconv.ParseBool(v); err == nil {

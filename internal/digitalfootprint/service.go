@@ -50,14 +50,10 @@ func (s *Service) Collect(ctx context.Context, inputs models.TargetInput) models
 	}
 
 	spiderFoot := providers.CollectSpiderFootEnrichment(ctx, s.httpClient, s.config.SpiderFootCommand, s.config.SpiderFootURL, s.config.SpiderFootResultsPath, domain, inputs.Company)
-	maltego := providers.CollectMaltegoEnrichment(ctx, s.config.MaltegoCommand, s.config.MaltegoResultsPath, domain, inputs.Company)
 	result.Warnings = append(result.Warnings, spiderFoot.Warnings...)
-	result.Warnings = append(result.Warnings, maltego.Warnings...)
 	result.Errors = append(result.Errors, spiderFoot.Errors...)
-	result.Errors = append(result.Errors, maltego.Errors...)
-	result.Data.ProvidersUsed = mergeStringLists(result.Data.ProvidersUsed, providers.ProvidersUsed(spiderFoot, maltego))
+	result.Data.ProvidersUsed = mergeStringLists(result.Data.ProvidersUsed, providers.ProvidersUsed(spiderFoot))
 	applyExternalEnrichment(&result, spiderFoot)
-	applyExternalEnrichment(&result, maltego)
 
 	dnsRecords, dnsErrors := collectDNS(ctx, domain)
 	result.Errors = append(result.Errors, dnsErrors...)

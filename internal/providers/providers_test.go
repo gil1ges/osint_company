@@ -109,7 +109,7 @@ func TestParseProviderJSONEnrichment(t *testing.T) {
 
 func TestParseProviderCSVEnrichment(t *testing.T) {
 	body := []byte("type,value\nhost,www.example.com\nprovider,AS321 Example ISP\n")
-	result, err := parseProviderContent("maltego", "maltego.csv", body, "example.com")
+	result, err := parseProviderContent("spiderfoot", "spiderfoot.csv", body, "example.com")
 	if err != nil {
 		t.Fatalf("parseProviderContent returned error: %v", err)
 	}
